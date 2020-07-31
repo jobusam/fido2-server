@@ -1,5 +1,8 @@
 package de.busam.fido2;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import de.busam.fido2.jwt.JWTAccessManager;
 import de.busam.fido2.jwt.JWTContextDecoder;
 import de.busam.fido2.jwt.JWTController;
@@ -19,14 +22,16 @@ import java.util.Optional;
 public class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class.getName());
 
+    //FIXME: The Hostname is currently used in WebAuthn standard for device registration.
+    // But keep in mind the java script credentials management api can be only used without HTTPS on localhost.
+    // Otherwise it will not be available if you don't use HTTPS (Client throws TypeError: navigator.credentials is undefined).
+    public static final String HOSTNAME = "localhost";
     public static void main(String[] args) {
         Javalin app = Javalin.create(
                 config -> {
                     config.enableWebjars();
                     config.enableDevLogging();
                     config.accessManager(new JWTAccessManager());
-                    // default request cache size is 4096 Bytes
-                    //config.requestCacheSize = 1024L * 1024 * 1024;
                 }
         ).start(5000);
         addStateFunctions();
@@ -34,9 +39,6 @@ public class Main {
         addJWTSupport(app);
         addCommonPages(app);
         addAdminUi(app);
-
-        // Don't use this in production environment
-        //addFileUpload(app);
     }
 
     /**
@@ -53,6 +55,16 @@ public class Main {
      */
     static void configureJackson() {
         JavalinJackson.getObjectMapper().setDateFormat(new SimpleDateFormat("dd.mm.yyyy"));
+
+        // Fail on empty beans must be deactivated because the yubico webauthn implementation uses empty
+        // beans during serialization of public key credential creation options when registering device via FIDO2
+        // see also https://github.com/Yubico/java-webauthn-server
+        JavalinJackson.getObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        // to avoid serializing empty Optionals (that can't be interpreted correctly in java script client)
+        // concrete problem with java-webauthn-server library (Serialization of PublicKeyCredentialCreationOptions)
+        JavalinJackson.getObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_ABSENT);
+        JavalinJackson.getObjectMapper().registerModule(new Jdk8Module());
     }
 
     static void addJWTSupport(Javalin app) {
@@ -61,9 +73,17 @@ public class Main {
         app.before(JWTContextDecoder.createCookieDecodeHandler(jwtController));
 
         //there is no separate login page. Because the login is on the landing page
-        app.post("/login", jwtController::login, SecurityUtil.roles(AppRole.ANYONE));
-        app.get("/logout", jwtController::logout, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
+        app.post("/api/login", jwtController::login, SecurityUtil.roles(AppRole.ANYONE));
+        app.get("/api/logout", jwtController::logout, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
         app.get("/api/validate", jwtController::validate, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
+
+        addFido2Support(app);
+    }
+
+    static void addFido2Support(Javalin app){
+        AuthDeviceController authDeviceController = new AuthDeviceController(HOSTNAME);
+        app.post("/api/deviceregistration", authDeviceController::register,SecurityUtil.roles(AppRole.USER));
+
     }
 
     static void addCommonPages(Javalin app) {

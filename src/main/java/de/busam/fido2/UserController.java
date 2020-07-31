@@ -1,5 +1,9 @@
 package de.busam.fido2;
 
+import com.yubico.webauthn.CredentialRepository;
+import com.yubico.webauthn.RegisteredCredential;
+import com.yubico.webauthn.data.ByteArray;
+import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
 import de.busam.fido2.model.user.AppRole;
 import de.busam.fido2.model.user.User;
 import de.busam.fido2.model.user.UserDetails;
@@ -8,14 +12,12 @@ import io.javalin.http.NotFoundResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * This controller holds the user data
  */
-public class UserController {
+public class UserController implements CredentialRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class.getName());
 
     static Map<Integer, User> users = new HashMap<>();
@@ -55,5 +57,35 @@ public class UserController {
         return users.values().stream()
                 .filter(user -> user.name().equals(username))
                 .findFirst().orElse(null);
+    }
+
+    @Override
+    public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
+        LOGGER.error("Not Implemented: getCredentialIdsForUsername with username = {}",username);
+        return null;
+    }
+
+    @Override
+    public Optional<ByteArray> getUserHandleForUsername(String username) {
+        throw new RuntimeException("Not yet implemented");
+        //return Optional.empty();
+    }
+
+    @Override
+    public Optional<String> getUsernameForUserHandle(ByteArray userHandle) {
+        throw new RuntimeException("Not yet implemented");
+        //return Optional.empty();
+    }
+
+    @Override
+    public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
+        throw new RuntimeException("Not yet implemented");
+        //return Optional.empty();
+    }
+
+    @Override
+    public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
+        throw new RuntimeException("Not yet implemented");
+        //return null;
     }
 }

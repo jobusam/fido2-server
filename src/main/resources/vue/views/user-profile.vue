@@ -19,6 +19,9 @@
                 <dd>{{user.userDetails.address}}</dd>
             </ul>
         </div>
+        <div>
+            <button v-on:click="deviceRegistration">register device (FIDO2)</button>
+        </div
     </app-frame>
 </template>
 <script>
@@ -33,6 +36,26 @@
                 .then(res => res.json())
                 .then(res => this.user = res)
                 .catch(() => alert("Error while fetching user"));
-        }
+        },
+        methods: {
+                    deviceRegistration: function () {
+                        fetch('/api/deviceregistration/',{method: 'POST'})
+                        .then(res => res.json())
+                        .then(createOptions => {
+                                console.log(createOptions);
+                                //convert b64-encoded values in Uint8Arrays, otherwise firefox will throw a type error!
+                                //decodedChallenge = atob(createOptions.challenge)
+                                //console.log("encodedChallenge = " + decodedChallenge)
+                                //console.log("decodedId = " + decodedId)
+                                //createOptions.challenge = Uint8Array.from(createOptions.challenge, c => c.charCodeAt(0));
+                                createOptions.user.id = Uint8Array.from(atob(createOptions.user.id), c => c.charCodeAt(0));
+
+                                //const credential = navigator.credentials.create({
+                                //        publicKey: createOptions
+                                //});
+                                //console.log(credential);
+                        });
+                    }
+                }
     });
 </script>

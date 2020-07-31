@@ -4,7 +4,7 @@
             <span>Fido 2 - Test</span>
             <span v-if="$javalin.state.currentUser != 'anonym'">
                 <span>Current user: '{{$javalin.state.currentUser}}'</span>
-                <span><a href="/logout"><button>Logout</button></a></span>
+                <span><a href="/api/logout"><button>Logout</button></a></span>
             </span>
         </header>
         <slot></slot>
