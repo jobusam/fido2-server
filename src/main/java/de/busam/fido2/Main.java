@@ -9,6 +9,7 @@ import de.busam.fido2.jwt.JWTController;
 import de.busam.fido2.model.user.AppRole;
 import io.javalin.Javalin;
 import io.javalin.core.security.SecurityUtil;
+import io.javalin.core.util.RouteOverviewPlugin;
 import io.javalin.plugin.json.JavalinJackson;
 import io.javalin.plugin.rendering.vue.JavalinVue;
 import io.javalin.plugin.rendering.vue.VueComponent;
@@ -30,8 +31,9 @@ public class Main {
         Javalin app = Javalin.create(
                 config -> {
                     config.enableWebjars();
-                    config.enableDevLogging();
                     config.accessManager(new JWTAccessManager());
+                    config.enableDevLogging();
+                    config.registerPlugin(new RouteOverviewPlugin("/overview",SecurityUtil.roles(AppRole.ADMIN)));
                 }
         ).start(5000);
         addStateFunctions();

@@ -13,11 +13,8 @@ import io.javalin.http.NotFoundResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.Charset;
 import java.util.Optional;
-import java.util.Random;
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 public class AuthDeviceController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthDeviceController.class.getName());
@@ -46,7 +43,7 @@ public class AuthDeviceController {
         String username = user.get().name();
         String email = user.get().email();
         String userHandle = UUID.randomUUID().toString();
-        LOGGER.info("userHandle = {}",userHandle);
+        LOGGER.info("Create PKI Create Options for username {} with userHandle = {}",username,userHandle);
         PublicKeyCredentialCreationOptions request = rp.startRegistration(StartRegistrationOptions.builder()
                 .user(UserIdentity.builder()
                         .name(username)
@@ -54,8 +51,6 @@ public class AuthDeviceController {
                         .id(new ByteArray(userHandle.getBytes()))
                         .build())
                 .build());
-        LOGGER.info("challenge = {}",request.getChallenge());
-        LOGGER.info("challenge2 = {}",new String(request.getChallenge().getBytes()));
         context.json(request);
     }
 }

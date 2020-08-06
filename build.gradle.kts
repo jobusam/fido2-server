@@ -28,6 +28,8 @@ dependencies {
 
     // Webjars for web frontend
     implementation("org.webjars.npm","vue","2.6.11")
+    // webjar to decode base64 url safe content for WebAuthN Standard
+    implementation("org.webjars.npm","js-base64","3.4.4")
 
     testCompile("junit", "junit", "4.12")
 }
