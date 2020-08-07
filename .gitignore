@@ -1,4 +1,4 @@
 build/
 .idea
 .gradle
-./src/main/resources/serverkeystore
+src/main/resources/serverkeystore.jks

@@ -72,7 +72,7 @@ public class Main {
         var server = new Server();
         var sslContextFactory = new SslContextFactory.Server();
         // FIXME: fix that in production code!
-        sslContextFactory.setKeyStorePath("src/main/resources/serverkeystore");
+        sslContextFactory.setKeyStorePath("src/main/resources/serverkeystore.jks");
         sslContextFactory.setKeyStorePassword("jetty-pwd");
         var secCon = new ServerConnector(server,sslContextFactory);
         secCon.setPort(port);
