@@ -17,7 +17,7 @@ import java.util.*;
 /**
  * This controller holds the user data
  */
-public class UserController implements CredentialRepository {
+public class UserController {
     private static final Logger LOGGER = LoggerFactory.getLogger(UserController.class.getName());
 
     static Map<Integer, User> users = new HashMap<>();
@@ -57,35 +57,5 @@ public class UserController implements CredentialRepository {
         return users.values().stream()
                 .filter(user -> user.name().equals(username))
                 .findFirst().orElse(null);
-    }
-
-    @Override
-    public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
-        LOGGER.error("Not Implemented: getCredentialIdsForUsername with username = {}",username);
-        return null;
-    }
-
-    @Override
-    public Optional<ByteArray> getUserHandleForUsername(String username) {
-        throw new RuntimeException("Not yet implemented");
-        //return Optional.empty();
-    }
-
-    @Override
-    public Optional<String> getUsernameForUserHandle(ByteArray userHandle) {
-        throw new RuntimeException("Not yet implemented");
-        //return Optional.empty();
-    }
-
-    @Override
-    public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
-        throw new RuntimeException("Not yet implemented");
-        //return Optional.empty();
-    }
-
-    @Override
-    public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
-        throw new RuntimeException("Not yet implemented");
-        //return null;
     }
 }

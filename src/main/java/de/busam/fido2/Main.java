@@ -10,37 +10,74 @@ import de.busam.fido2.model.user.AppRole;
 import io.javalin.Javalin;
 import io.javalin.core.security.SecurityUtil;
 import io.javalin.core.util.RouteOverviewPlugin;
+import io.javalin.http.staticfiles.Location;
 import io.javalin.plugin.json.JavalinJackson;
 import io.javalin.plugin.rendering.vue.JavalinVue;
 import io.javalin.plugin.rendering.vue.VueComponent;
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.text.SimpleDateFormat;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
+
+import static io.javalin.apibuilder.ApiBuilder.path;
+import static io.javalin.apibuilder.ApiBuilder.get;
+import static io.javalin.apibuilder.ApiBuilder.post;
 
 public class Main {
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class.getName());
 
-    //FIXME: The Hostname is currently used in WebAuthn standard for device registration.
+    //FIXME: The Hostname is currently used in WebAuthn standard for device registration and for verification ot the original request server name
     // But keep in mind the java script credentials management api can be only used without HTTPS on localhost.
     // Otherwise it will not be available if you don't use HTTPS (Client throws TypeError: navigator.credentials is undefined).
     public static final String HOSTNAME = "localhost";
+    public static final int PORT = 5000;
     public static void main(String[] args) {
         Javalin app = Javalin.create(
                 config -> {
                     config.enableWebjars();
                     config.accessManager(new JWTAccessManager());
+
+                    // use custom server to support TLS with custom cert
+                    config.server(() -> getSecureServer(PORT));
+
+                    // for developing
                     config.enableDevLogging();
                     config.registerPlugin(new RouteOverviewPlugin("/overview",SecurityUtil.roles(AppRole.ADMIN)));
+
+                    // for static content like favicon
+                    // TODO: relocate images on another http request url path
+                    config.addStaticFiles("/", "images/",Location.CLASSPATH);
+                    config.precompressStaticFiles = true;
                 }
-        ).start(5000);
+        ).start();
         addStateFunctions();
         configureJackson();
         addJWTSupport(app);
         addCommonPages(app);
         addAdminUi(app);
+    }
+
+    /**
+     * Create a Jetty Server that supports TLS connections only!
+     * Using a custom cert for localhost
+     * @return
+     */
+    private static Server getSecureServer(int port) {
+        var server = new Server();
+        var sslContextFactory = new SslContextFactory.Server();
+        // FIXME: fix that in production code!
+        sslContextFactory.setKeyStorePath("src/main/resources/serverkeystore");
+        sslContextFactory.setKeyStorePassword("jetty-pwd");
+        var secCon = new ServerConnector(server,sslContextFactory);
+        secCon.setPort(port);
+        server.addConnector(secCon);
+        return server;
     }
 
     /**
@@ -75,17 +112,24 @@ public class Main {
         app.before(JWTContextDecoder.createCookieDecodeHandler(jwtController));
 
         //there is no separate login page. Because the login is on the landing page
-        app.post("/api/login", jwtController::login, SecurityUtil.roles(AppRole.ANYONE));
-        app.get("/api/logout", jwtController::logout, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
-        app.get("/api/validate", jwtController::validate, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
-
+        app.routes(() -> {
+            path("/api",() -> {
+                post("/login", jwtController::login, SecurityUtil.roles(AppRole.ANYONE));
+                get("/logout", jwtController::logout, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
+                get("/validate", jwtController::validate, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
+            });
+        });
         addFido2Support(app);
     }
 
     static void addFido2Support(Javalin app){
-        AuthDeviceController authDeviceController = new AuthDeviceController(HOSTNAME);
-        app.post("/api/deviceregistration", authDeviceController::register,SecurityUtil.roles(AppRole.USER));
-
+        AuthDeviceController authDeviceController = new AuthDeviceController(HOSTNAME,PORT);
+        app.routes(() -> {
+            path("/api/device",() -> {
+                get("/init-registration", authDeviceController::initRegistration,SecurityUtil.roles(AppRole.USER));
+                post("/finish-registration", authDeviceController::finishRegistration,SecurityUtil.roles(AppRole.USER));
+            });
+        });
     }
 
     static void addCommonPages(Javalin app) {
@@ -100,10 +144,11 @@ public class Main {
                 SecurityUtil.roles(AppRole.ADMIN));
         app.get("/users/:user-id", new VueComponent("<user-profile></user-profile>"),
                 SecurityUtil.roles(AppRole.ADMIN));
-
-        app.get("/api/users", UserController::getAll,
-                SecurityUtil.roles(AppRole.ADMIN));
-        app.get("/api/users/:user-id", UserController::getOne,
-                SecurityUtil.roles(AppRole.ADMIN));
+        app.routes(() -> {
+            path("/api",() -> {
+                get("/users", UserController::getAll, SecurityUtil.roles(AppRole.ADMIN));
+                get("/users/:user-id", UserController::getOne, SecurityUtil.roles(AppRole.ADMIN));
+            });
+        });
     }
 }

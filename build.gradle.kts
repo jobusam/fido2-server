@@ -11,8 +11,10 @@ repositories {
 }
 
 dependencies {
-    implementation("io.javalin","javalin","3.8.0")
-    implementation("org.slf4j","slf4j-simple","1.7.28")
+    implementation("io.javalin","javalin","3.9.1")
+    // use tinylog for simple and fast log handling
+    implementation("org.tinylog","slf4j-tinylog","2.1.2")
+    implementation("org.tinylog","tinylog-impl","2.1.2")
 
     // Security - JWT
     implementation("com.auth0","java-jwt","3.10.3")

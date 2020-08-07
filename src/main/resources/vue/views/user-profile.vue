@@ -39,7 +39,7 @@
         },
         methods: {
             deviceRegistration: function () {
-                fetch('/api/deviceregistration/',{method: 'POST'})
+                fetch('/api/device/init-registration',{method: 'GET'})
                     .then(res => res.json())
                     .then(createOptions => {
                         //decode challenge and user id from Base64URL format
@@ -49,8 +49,22 @@
                         return createOptions;
                         })
                     .then(convertedOptions => {
-                        credentials = navigator.credentials.create({publicKey: convertedOptions});
-                        credentials.then(creds => console.log(creds));
+                         navigator.credentials.create({publicKey: convertedOptions})
+                            .then(creds =>{
+                                let content = {
+                                    id : creds.id,
+                                    response: {
+                                        attestationObject : Base64.fromUint8Array(new Uint8Array(creds.response.attestationObject), true),
+                                        clientDataJSON : Base64.fromUint8Array(new Uint8Array(creds.response.clientDataJSON), true)
+                                        },
+                                    clientExtensionResults: creds.getClientExtensionResults(),
+                                    type : creds.type
+                                };
+                                console.log(content);
+                                fetch('/api/device/finish-registration', {
+                                    method: 'POST', body: JSON.stringify(content) })
+                                    .then(res => console.log("Request complete! response:", res));
+                                });
                         });
             }
         }
