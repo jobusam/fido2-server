@@ -45,6 +45,7 @@
                         //decode challenge and user id from Base64URL format
                         createOptions.user.id = Base64.toUint8Array(createOptions.user.id);
                         createOptions.challenge = Base64.toUint8Array(createOptions.challenge);
+                        //FIXME: convert also id's of excluded credentials. Otherwise an exception will be thrown!
                         console.log(createOptions);
                         return createOptions;
                         })

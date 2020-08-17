@@ -88,7 +88,7 @@ public class AuthDeviceController {
 
             // if attestation is required by server than you have to check if the attestation is valid at this point
             deviceCredentialsRepository.storeCredential(
-                    getUser(context).name(), result.getKeyId(), result.getPublicKeyCose());
+                    getUser(context).name(), request.getUser().getId(), result.getKeyId(), result.getPublicKeyCose());
 
         } catch (RegistrationFailedException | IOException e) {
             LOGGER.error("Can't parse Device Registation Response {}", responseJson, e);

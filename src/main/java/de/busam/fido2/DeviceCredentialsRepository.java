@@ -7,25 +7,46 @@ import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
+
+/**
+ * Data record for persisting security credentials
+ * Keep in mind: both values, the userName and the userHandle identifies an user uniquely. The difference is that
+ * the userHandle is explicitly used during the WebAuthn registration and authentication process and must not include
+ * any personal data (name, e-mail address, or data derived from personal information). This improves data privacy.
+ */
+record DeviceCredential(String userName,ByteArray userHandle, PublicKeyCredentialDescriptor keyId, ByteArray publicKeyCose){
+}
+
+/**
+ * At first step use an In-Memory Hash-Map to store the credentials for the users.
+ */
 public class DeviceCredentialsRepository implements CredentialRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeviceCredentialsRepository.class.getName());
 
-    // FIXME: implement following code
+    private static final Set<DeviceCredential> deviceCredentials = new HashSet<>();
 
-    void storeCredential(String username, PublicKeyCredentialDescriptor keyId, ByteArray publicKeyCose) {
-        LOGGER.info("Store Credential username = {}, id = {}, publicKey = {}", username, keyId, publicKeyCose);
-        LOGGER.error("Not Implemented: storeCredential");
+    /**
+     * Store device credentials for a given user.
+     * @param userName responds to userName in UserController
+     * @param userHandle random generated id during registration process
+     * @param keyId
+     * @param publicKeyCose see also https://tools.ietf.org/html/rfc8152#section-7
+     */
+    void storeCredential(String userName, ByteArray userHandle, PublicKeyCredentialDescriptor keyId, ByteArray publicKeyCose) {
+        LOGGER.info("Store Credential userName = {}, userHandle = {}, id = {}, publicKey = {}", userName, userHandle, keyId, publicKeyCose);
+        deviceCredentials.add(new DeviceCredential(userName, userHandle, keyId,publicKeyCose));
     }
 
     @Override
-    public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
-        LOGGER.error("Not Implemented: getCredentialIdsForUsername with username = {}",username);
-        return null;
+    public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String userName) {
+        return deviceCredentials.stream()
+                .filter(deviceCredential -> deviceCredential.userName().equals(userName))
+                .map(DeviceCredential::keyId)
+                .collect(Collectors.toSet());
     }
 
     @Override
@@ -48,8 +69,13 @@ public class DeviceCredentialsRepository implements CredentialRepository {
 
     @Override
     public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
-        //throw new RuntimeException("Not yet implemented");
-        LOGGER.error("Not Implemented: lookupAll with credentialId = {}",credentialId);
-        return Collections.emptySet();
+        return deviceCredentials.stream()
+                .filter(deviceCredential -> deviceCredential.keyId().getId().compareTo(credentialId) == 0)
+                .map( deviceCredential -> new RegisteredCredential.RegisteredCredentialBuilder.MandatoryStages()
+                        .credentialId(deviceCredential.keyId().getId())
+                        .userHandle(deviceCredential.userHandle())
+                        .publicKeyCose(deviceCredential.publicKeyCose())
+                        .build())
+                .collect(Collectors.toSet());
     }
 }
