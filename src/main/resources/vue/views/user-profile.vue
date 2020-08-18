@@ -45,13 +45,19 @@
                         //decode challenge and user id from Base64URL format
                         createOptions.user.id = Base64.toUint8Array(createOptions.user.id);
                         createOptions.challenge = Base64.toUint8Array(createOptions.challenge);
-                        //FIXME: convert also id's of excluded credentials. Otherwise an exception will be thrown!
-                        console.log(createOptions);
+                        createOptions.excludeCredentials
+                            .map( cred => {
+                                cred.id = Base64.toUint8Array(cred.id).buffer;
+                                return cred;
+                            });
+                        console.log("Create Options (with decoded Uint8Arrays): ", createOptions);
                         return createOptions;
                         })
                     .then(convertedOptions => {
                          navigator.credentials.create({publicKey: convertedOptions})
                             .then(creds =>{
+                                console.log("original creds = ", creds);
+                                console.log("creds.rawId = ",new Uint8Array(creds.rawId));
                                 let content = {
                                     id : creds.id,
                                     response: {
@@ -61,11 +67,14 @@
                                     clientExtensionResults: creds.getClientExtensionResults(),
                                     type : creds.type
                                 };
-                                console.log(content);
+                                console.log("modified creds (will be sent to server)", content);
                                 fetch('/api/device/finish-registration', {
                                     method: 'POST', body: JSON.stringify(content) })
                                     .then(res => console.log("Request complete! response:", res));
-                                });
+                                })
+                            .catch(rejected => console.log("Creating credentials failed. "+
+                            "Maybe the authenticator already uses this credential"+
+                            "(so it's not possible to register the same authenticator twice. Original exception:",rejected));
                         });
             }
         }
