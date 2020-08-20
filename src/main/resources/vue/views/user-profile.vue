@@ -39,7 +39,7 @@
         },
         methods: {
             deviceRegistration: function () {
-                fetch('/api/device/init-registration',{method: 'GET'})
+                fetch('/api/device/start-registration',{method: 'GET'})
                     .then(res => res.json())
                     .then(createOptions => {
                         //decode challenge and user id from Base64URL format

@@ -2,14 +2,16 @@
     <app-frame>
         <h2 class="landing-page">Organize your finances</h2>
         <div v-if="$javalin.state.currentUser == 'anonym'">
-            <h2>Login</h2>
+            <h2>Login with Password</h2>
             <form action="/api/login" method="post">
                 <input type="text" name="username" placeholder="Username"/>
                 <input type="password" name="password" placeholder="Password"/>
                 <button type="submit" >Login</button>
             </form>
             <br>
-            <button v-on:click="authDeviceController">or login with device (FIDO2)</button>
+            <h2>Login with Authentication Device (like Nitrokey FIDO2)</h2>
+            <input type="text", name="name",placeholder="Username"/>
+            <button v-on:click="authWithDevice">login</button>
         </div>
         <div v-else>
             <a href="/users">
@@ -22,8 +24,14 @@
     Vue.component("landing-page", {
         template: "#landing-page",
         methods: {
-            authDeviceController: function () {
+          authWithDevice: function () {
                 alert("Use device login")
+                fetch('/api/device/start-authentication',{method: 'GET'})
+                    .then(res => res.json())
+                    .then(assertionRequest => {
+                      console.log("Assertion Request = ",assertionRequest)
+                    })
+                    .catch(rejected => console.log("Getting assertionRequest failed",rejected));
             }
         }
     });

@@ -125,8 +125,9 @@ public class Main {
         AuthDeviceController authDeviceController = new AuthDeviceController(HOSTNAME,PORT);
         app.routes(() -> {
             path("/api/device",() -> {
-                get("/init-registration", authDeviceController::initRegistration,SecurityUtil.roles(AppRole.USER));
+                get("/start-registration", authDeviceController::startRegistration,SecurityUtil.roles(AppRole.USER));
                 post("/finish-registration", authDeviceController::finishRegistration,SecurityUtil.roles(AppRole.USER));
+                get("/start-authentication",authDeviceController::startAuthentication,SecurityUtil.roles(AppRole.ANYONE));
             });
         });
     }

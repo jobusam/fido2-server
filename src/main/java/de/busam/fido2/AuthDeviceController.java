@@ -54,7 +54,7 @@ public class AuthDeviceController {
         return user.get();
     }
 
-    public void initRegistration(Context context) {
+    public void startRegistration(Context context) {
         var user = getUser(context);
         String username = user.name();
         String email = user.email();
@@ -94,6 +94,10 @@ public class AuthDeviceController {
             LOGGER.error("Can't parse Device Registation Response {}", responseJson, e);
             throw new BadRequestResponse();
         }
+    }
+
+    public void startAuthentication(Context context){
+
     }
 
 }

@@ -28,7 +28,7 @@ Application tests will be done with Firefox 79.
 $ cd resources
 
 // Create server certificate based on elliptic curve keys with ECDSA
-$ keytool -keystore serverkeystore -alias jetty-custom -genkey -keyalg EC -sigalg SHA384withECDSA --dname CN=localhost
+$ keytool -keystore serverkeystore.jks -alias jetty-custom -genkey -keyalg EC -sigalg SHA384withECDSA --dname CN=localhost
     -> Enter keystore password:  jetty-pwd
     -> set correct hostname with CN=[hostname]
 ```

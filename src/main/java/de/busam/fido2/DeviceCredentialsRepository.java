@@ -4,6 +4,7 @@ import com.yubico.webauthn.CredentialRepository;
 import com.yubico.webauthn.RegisteredCredential;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
+import com.yubico.webauthn.data.exception.HexException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +29,10 @@ public class DeviceCredentialsRepository implements CredentialRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(DeviceCredentialsRepository.class.getName());
 
     private static final Set<DeviceCredential> deviceCredentials = new HashSet<>();
+
+    public DeviceCredentialsRepository(){
+        // addTestCredentials();
+    }
 
     /**
      * Store device credentials for a given user.
@@ -77,5 +82,18 @@ public class DeviceCredentialsRepository implements CredentialRepository {
                         .publicKeyCose(deviceCredential.publicKeyCose())
                         .build())
                 .collect(Collectors.toSet());
+    }
+
+    //TODO: Set correct values for testing purpose!
+    public void addTestCredentials(){
+        try {
+            ByteArray userHandle = ByteArray.fromHex(" ");
+            ByteArray id = ByteArray.fromHex(" ");
+            PublicKeyCredentialDescriptor publicKeyCredentialDescriptor = PublicKeyCredentialDescriptor.builder().id(id).build();
+            ByteArray publicKeyCoase = ByteArray.fromHex(" ");
+            storeCredential(" ", userHandle,publicKeyCredentialDescriptor,publicKeyCoase);
+        }catch (HexException e){
+            LOGGER.error("Can't add test credentials!!!");
+        }
     }
 }
