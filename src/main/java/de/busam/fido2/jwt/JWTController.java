@@ -85,8 +85,6 @@ public class JWTController {
      */
     public void logout(Context context){
         context.cookie("jwt", "", 0);
-        // redirect to landing page
-        context.redirect("/");
     }
 
     public void validate(Context context) {

@@ -4,7 +4,7 @@
             <span>Fido 2 - Test</span>
             <span v-if="$javalin.state.currentUser != 'anonym'">
                 <span>Current user: '{{$javalin.state.currentUser}}'</span>
-                <span><a href="/api/logout"><button>Logout</button></a></span>
+                <span><button v-on:click="logout">Logout</button></span>
             </span>
         </header>
         <slot></slot>
@@ -13,6 +13,18 @@
 <script>
     Vue.component("app-frame", {
         template: "#app-frame",
+        methods: {
+            logout: function () {
+                fetch('/api/logout')
+                    .then(response => {
+                        if(!response.ok){
+                            throw new Error("Logout failed with HTTP Status: ",response.status)
+                        }
+                        location.assign('/');
+                    })
+                    .catch(rejected => console.log("Logout failed",rejected));
+            }
+        }
     });
 </script>
 <style>

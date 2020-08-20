@@ -26,7 +26,6 @@
         }),
         methods: {
             authWithPassword: function () {
-                console.log("Use login with password. username = ",this.username);
                 fetch('/api/login', {method: 'POST',
                         body: JSON.stringify({username: this.username, password: this.password})})
                     .then(response => {
