@@ -41,12 +41,49 @@
             },
             authWithDevice: function () {
                 console.log("Use login with device. username = ",this.username);
-                //fetch('/api/device/start-authentication',{method: 'GET'})
-                //    .then(res => res.json())
-                //    .then(assertionRequest => {
-                //      console.log("Assertion Request = ",assertionRequest)
-                //    })
-                //    .catch(rejected => console.log("Getting assertionRequest failed",rejected));
+                fetch('/api/device/start-authentication',{method: 'POST',
+                        body: JSON.stringify({username: this.username})})
+                    .then(response => response.json())
+                    .then(assertionRequest => assertionRequest.publicKeyCredentialRequestOptions)
+                    .then(credentialOptions => {
+                        credentialOptions.challenge = Base64.toUint8Array(credentialOptions.challenge);
+                        credentialOptions.allowCredentials
+                            .map( cred => {
+                                cred.id = Base64.toUint8Array(cred.id);
+                                return cred;
+                            });
+                        console.log("PublicKeyCredentialRequestOptions = ",credentialOptions)
+                        return credentialOptions;
+                        })
+                    .then(publicKeyCredentialRequestOptions => {
+                        navigator.credentials.get({publicKey: publicKeyCredentialRequestOptions})
+                            .then(creds => {
+                                console.log("Credentials =",creds)
+                                let content = {
+                                    id : creds.id,
+                                    response : {
+                                         authenticatorData : Base64.fromUint8Array(new Uint8Array(creds.response.authenticatorData), true),
+                                         clientDataJSON : Base64.fromUint8Array(new Uint8Array(creds.response.clientDataJSON), true),
+                                         signature : Base64.fromUint8Array(new Uint8Array(creds.response.signature), true)
+                                        },
+                                    clientExtensionResults : creds.getClientExtensionResults(),
+                                    type : creds.type
+                                };
+                                console.log("Credentials JSON = ",JSON.stringify(content));
+                                fetch('/api/device/finish-authentication', {method: 'POST', body: JSON.stringify(content)})
+                                    .then(response => {
+                                        if(response.ok){
+                                           console.log("Request complete! response:", response);
+                                           location.reload();
+                                        }else{
+                                            console.log("Authentication failed with HTTP status: ",response.status);
+                                        }
+                                     })
+                                    .catch(error => console.log("Finish authentication request error: ",error));
+                            })
+                            .catch(error => console.log("Error validating user: ",error));
+                    })
+                    .catch(rejected => console.log("Getting assertionRequest failed",rejected));
             }
         }
     });

@@ -11,22 +11,22 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.stream.Collectors;
 
-
-/**
- * Data record for persisting security credentials
- * Keep in mind: both values, the userName and the userHandle identifies an user uniquely. The difference is that
- * the userHandle is explicitly used during the WebAuthn registration and authentication process and must not include
- * any personal data (name, e-mail address, or data derived from personal information). This improves data privacy.
- */
-record DeviceCredential(String userName,ByteArray userHandle, PublicKeyCredentialDescriptor keyId, ByteArray publicKeyCose){
-}
-
 /**
  * At first step use an In-Memory Hash-Map to store the credentials for the users.
  */
 public class DeviceCredentialsRepository implements CredentialRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DeviceCredentialsRepository.class.getName());
+
+    /**
+     * Data record for persisting security credentials
+     * Keep in mind: both values, the userName and the userHandle identifies an user uniquely. The difference is that
+     * the userHandle is explicitly used during the WebAuthn registration and authentication process and must not include
+     * any personal data (name, e-mail address, or data derived from personal information). This improves data privacy.
+     */
+    record DeviceCredential(String userName, ByteArray userHandle, PublicKeyCredentialDescriptor keyId,
+                            ByteArray publicKeyCose) {
+    }
 
     private static final Set<DeviceCredential> deviceCredentials = new HashSet<>();
 
@@ -36,14 +36,15 @@ public class DeviceCredentialsRepository implements CredentialRepository {
 
     /**
      * Store device credentials for a given user.
-     * @param userName responds to userName in UserController
-     * @param userHandle random generated id during registration process
+     *
+     * @param userName      responds to userName in UserController
+     * @param userHandle    random generated id during registration process
      * @param keyId
      * @param publicKeyCose see also https://tools.ietf.org/html/rfc8152#section-7
      */
     void storeCredential(String userName, ByteArray userHandle, PublicKeyCredentialDescriptor keyId, ByteArray publicKeyCose) {
         LOGGER.info("Store Credential userName = {}, userHandle = {}, id = {}, publicKey = {}", userName, userHandle, keyId, publicKeyCose);
-        deviceCredentials.add(new DeviceCredential(userName, userHandle, keyId,publicKeyCose));
+        deviceCredentials.add(new DeviceCredential(userName, userHandle, keyId, publicKeyCose));
     }
 
     @Override
@@ -55,9 +56,11 @@ public class DeviceCredentialsRepository implements CredentialRepository {
     }
 
     @Override
-    public Optional<ByteArray> getUserHandleForUsername(String username) {
-        throw new RuntimeException("Not yet implemented");
-        //return Optional.empty();
+    public Optional<ByteArray> getUserHandleForUsername(String userName) {
+        return deviceCredentials.stream()
+                .filter(deviceCredential -> deviceCredential.userName().equals(userName))
+                .map(DeviceCredential::userHandle)
+                .findFirst();
     }
 
     @Override
@@ -68,15 +71,23 @@ public class DeviceCredentialsRepository implements CredentialRepository {
 
     @Override
     public Optional<RegisteredCredential> lookup(ByteArray credentialId, ByteArray userHandle) {
-        throw new RuntimeException("Not yet implemented");
-        //return Optional.empty();
+        return deviceCredentials.stream()
+                .filter(deviceCredential ->
+                        deviceCredential.keyId().getId().compareTo(credentialId) == 0 &&
+                        deviceCredential.userHandle.compareTo(userHandle) == 0)
+                .map(deviceCredential -> new RegisteredCredential.RegisteredCredentialBuilder.MandatoryStages()
+                        .credentialId(deviceCredential.keyId().getId())
+                        .userHandle(deviceCredential.userHandle())
+                        .publicKeyCose(deviceCredential.publicKeyCose())
+                        .build())
+                .findFirst();
     }
 
     @Override
     public Set<RegisteredCredential> lookupAll(ByteArray credentialId) {
         return deviceCredentials.stream()
                 .filter(deviceCredential -> deviceCredential.keyId().getId().compareTo(credentialId) == 0)
-                .map( deviceCredential -> new RegisteredCredential.RegisteredCredentialBuilder.MandatoryStages()
+                .map(deviceCredential -> new RegisteredCredential.RegisteredCredentialBuilder.MandatoryStages()
                         .credentialId(deviceCredential.keyId().getId())
                         .userHandle(deviceCredential.userHandle())
                         .publicKeyCose(deviceCredential.publicKeyCose())

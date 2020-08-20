@@ -118,16 +118,17 @@ public class Main {
                 get("/validate", jwtController::validate, SecurityUtil.roles(AppRole.USER, AppRole.ADMIN));
             });
         });
-        addFido2Support(app);
+        addFido2Support(app,jwtController);
     }
 
-    static void addFido2Support(Javalin app){
-        AuthDeviceController authDeviceController = new AuthDeviceController(HOSTNAME,PORT);
+    static void addFido2Support(Javalin app, JWTController jwtController){
+        AuthDeviceController authDeviceController = new AuthDeviceController(HOSTNAME,PORT,jwtController::generateToken);
         app.routes(() -> {
             path("/api/device",() -> {
                 get("/start-registration", authDeviceController::startRegistration,SecurityUtil.roles(AppRole.USER));
                 post("/finish-registration", authDeviceController::finishRegistration,SecurityUtil.roles(AppRole.USER));
-                get("/start-authentication",authDeviceController::startAuthentication,SecurityUtil.roles(AppRole.ANYONE));
+                post("/start-authentication",authDeviceController::startAuthentication,SecurityUtil.roles(AppRole.ANYONE));
+                post("/finish-authentication",authDeviceController::finishAuthentication,SecurityUtil.roles(AppRole.ANYONE));
             });
         });
     }

@@ -22,16 +22,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * This record represents the information body of an JWT
- */
-record JWTToken(@JsonProperty("content")String content) {
-}
-
-/**
  * This record represents the information of an login post request
  */
-record Credentials(@JsonProperty("username")String username,
-                   @JsonProperty("password")String password) {
+record Credentials(@JsonProperty("username") String username,
+                   @JsonProperty("password") String password) {
 }
 
 /**
@@ -39,19 +33,32 @@ record Credentials(@JsonProperty("username")String username,
  * use the implementation https://github.com/auth0/java-jwt
  */
 public class JWTController {
-    private static final Logger LOGGER = LoggerFactory.getLogger(JWTController.class.getName());
-
-    // FIXME: Change that in production environment!
-    private static final String JWT_SECRET = "very-special-secret";
-
     public static final String USER_CLAIM_ATTRIBUTE = "id";
     public static final String ROLE_CLAIM_ATTRIBUTE = "roles";
+    private static final Logger LOGGER = LoggerFactory.getLogger(JWTController.class.getName());
+    // FIXME: Change that in production environment!
+    private static final String JWT_SECRET = "very-special-secret";
     private final Algorithm algorithm;
     private final JWTVerifier verifier;
 
     public JWTController() {
         this.algorithm = Algorithm.HMAC256(JWT_SECRET);
         this.verifier = JWT.require(algorithm).build();
+    }
+
+    public static Integer getUserId(Context context) {
+        if (JWTContextDecoder.containsJWT(context)) {
+            return JWTContextDecoder.getDecodedFromContext(context)
+                    .getClaim(JWTController.USER_CLAIM_ATTRIBUTE).asInt();
+        }
+        return null;
+    }
+
+    public static String getUser(Context context) {
+        return Optional.ofNullable(getUserId(context))
+                .map(UserController::getUser)
+                .map(User::name)
+                .orElse(null);
     }
 
     public void login(Context context) {
@@ -64,8 +71,7 @@ public class JWTController {
             if (user != null) {
                 //check password
                 if (user.password().equals(password)) {
-                    JWTToken token = new JWTToken(generateToken(user.id(), user.roles()));
-                    JWTContextDecoder.addTokenToCookie(context, token.content());
+                    JWTContextDecoder.addTokenToCookie(context, generateToken(user.id(), user.roles()));
                 } else {
                     LOGGER.warn("Password missmatch. given pwd = {}", password);
                     throw new UnauthorizedResponse();
@@ -75,7 +81,7 @@ public class JWTController {
                 throw new UnauthorizedResponse();
             }
         } else {
-            LOGGER.warn("Credentials are not valid. username = {}, password = {}", username,password);
+            LOGGER.warn("Credentials are not valid. username = {}, password = {}", username, password);
             throw new UnauthorizedResponse();
         }
     }
@@ -83,7 +89,7 @@ public class JWTController {
     /**
      * during logout the max age of the cookie is set to 0. So the cookie will be deleted!
      */
-    public void logout(Context context){
+    public void logout(Context context) {
         context.cookie("jwt", "", 0);
     }
 
@@ -113,21 +119,6 @@ public class JWTController {
         } catch (JWTVerificationException ex) {
             return Optional.empty();
         }
-    }
-
-    public static Integer getUserId(Context context) {
-        if (JWTContextDecoder.containsJWT(context)) {
-            return JWTContextDecoder.getDecodedFromContext(context)
-                    .getClaim(JWTController.USER_CLAIM_ATTRIBUTE).asInt();
-        }
-        return null;
-    }
-
-    public static String getUser(Context context) {
-        return Optional.ofNullable(getUserId(context))
-                .map(UserController::getUser)
-                .map(User::name)
-                .orElse(null);
     }
 }
 

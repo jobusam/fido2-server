@@ -1,12 +1,13 @@
 package de.busam.fido2;
 
-import com.yubico.webauthn.FinishRegistrationOptions;
-import com.yubico.webauthn.RegistrationResult;
-import com.yubico.webauthn.RelyingParty;
-import com.yubico.webauthn.StartRegistrationOptions;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.yubico.webauthn.*;
 import com.yubico.webauthn.data.*;
+import com.yubico.webauthn.exception.AssertionFailedException;
 import com.yubico.webauthn.exception.RegistrationFailedException;
+import de.busam.fido2.jwt.JWTContextDecoder;
 import de.busam.fido2.jwt.JWTController;
+import de.busam.fido2.model.user.AppRole;
 import de.busam.fido2.model.user.User;
 import io.javalin.http.BadRequestResponse;
 import io.javalin.http.Context;
@@ -15,20 +16,31 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiFunction;
+
 
 public class AuthDeviceController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthDeviceController.class.getName());
 
     private final RelyingParty rp;
     private final DeviceCredentialsRepository deviceCredentialsRepository;
+    private final BiFunction<Integer, List<AppRole>, String> generateToken;
 
     // FIXME: this is a stupid workaround!
     private PublicKeyCredentialCreationOptions request;
+    private AssertionRequest assertionRequest;
 
-    public AuthDeviceController(String hostname, int port) {
+    /**
+     * This record represents the information of an login post request
+     */
+    record UserAuthRequest(@JsonProperty("username")String username ){
+    }
+
+    public AuthDeviceController(String hostname, int port, BiFunction<Integer, List<AppRole>, String> generateToken) {
         RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder()
                 .id(hostname)
                 .name("Fido 2 Test Application")
@@ -42,6 +54,7 @@ public class AuthDeviceController {
                 // TODO: requesting attestations in future
                 //.attestationConveyancePreference(AttestationConveyancePreference.DIRECT)
                 .build();
+        this.generateToken = generateToken;
     }
 
     public User getUser(Context context) {
@@ -97,7 +110,42 @@ public class AuthDeviceController {
     }
 
     public void startAuthentication(Context context){
+        UserAuthRequest userAuthRequest = context.bodyAsClass(UserAuthRequest.class);
+        if(userAuthRequest.username == null || userAuthRequest.username.isEmpty()){
+            LOGGER.error("Missing username to start authentication");
+            throw new BadRequestResponse();
+        }
+        assertionRequest = rp.startAssertion(StartAssertionOptions.builder()
+                .username(Optional.of(userAuthRequest.username))
+                .build());
+        context.json(assertionRequest);
+    }
 
+    public void finishAuthentication(Context context){
+        LOGGER.info("finishAuthentication called");
+        String responseJson = context.body();
+        try {
+            PublicKeyCredential<AuthenticatorAssertionResponse, ClientAssertionExtensionOutputs> pkc =
+                PublicKeyCredential.parseAssertionResponseJson(responseJson);
+
+            AssertionResult result = rp.finishAssertion(FinishAssertionOptions.builder()
+                    .request(assertionRequest)
+                    .response(pkc)
+                    .build());
+
+            if (result.isSuccess()) {
+                LOGGER.info("User {} successfully authenticated via FIDO2 device!!!!",result.getUsername());
+                User user = UserController.getUser(result.getUsername());
+                JWTContextDecoder.addTokenToCookie(context, this.generateToken.apply(user.id(), user.roles()));
+            }
+            else {
+                LOGGER.warn("Can't authenticate user");
+                throw new UnauthorizedResponse();
+            }
+        } catch (AssertionFailedException | IOException e) {
+            LOGGER.error("Can't authenticate user = {}", e);
+            throw new UnauthorizedResponse();
+        }
     }
 
 }
