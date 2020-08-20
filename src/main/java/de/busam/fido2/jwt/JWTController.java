@@ -12,6 +12,7 @@ import de.busam.fido2.model.user.AppRole;
 import de.busam.fido2.model.user.User;
 import io.javalin.http.Context;
 import io.javalin.http.NotFoundResponse;
+import io.javalin.http.UnauthorizedResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +55,9 @@ public class JWTController {
     }
 
     public void login(Context context) {
-        String username = context.formParam("username");
-        String password = context.formParam("password");
+        Credentials c = context.bodyAsClass(Credentials.class);
+        String username = c.username();
+        String password = c.password();
         if (username != null && !username.isBlank()
                 && password != null && !password.isBlank()) {
             User user = UserController.getUser(username);
@@ -66,15 +68,16 @@ public class JWTController {
                     JWTContextDecoder.addTokenToCookie(context, token.content());
                 } else {
                     LOGGER.warn("Password missmatch. given pwd = {}", password);
+                    throw new UnauthorizedResponse();
                 }
             } else {
                 LOGGER.warn("User can't be found. given user = {}", username);
+                throw new UnauthorizedResponse();
             }
         } else {
             LOGGER.warn("Credentials are not valid. username = {}, password = {}", username,password);
+            throw new UnauthorizedResponse();
         }
-        // redirect to landing page
-        context.redirect("/");
     }
 
     /**
